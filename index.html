@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Products Manager</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; }
+    h1 { color: #232f3e; }
+    form { background: #f4f4f4; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
+    label { font-weight: bold; }
+    input { width: 100%; padding: 8px; margin: 6px 0 14px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+    button { background: #ff9900; color: white; border: none; padding: 10px 24px; border-radius: 4px; cursor: pointer; font-size: 16px; }
+    button:hover { background: #e68900; }
+    .refresh-btn { background: #232f3e; margin-bottom: 15px; }
+    .refresh-btn:hover { background: #1a2330; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #232f3e; color: white; padding: 10px; text-align: left; }
+    td { padding: 10px; border-bottom: 1px solid #ddd; }
+    tr:hover { background: #f9f9f9; }
+    #status { padding: 10px; border-radius: 4px; margin-bottom: 10px; display: none; }
+    .success { background: #d4edda; color: #155724; }
+    .error { background: #f8d7da; color: #721c24; }
+  </style>
+</head>
+<body>
+
+  <h1>🛒 Product Management</h1>
+
+  <!-- Add Product Form -->
+  <form id="productForm">
+    <h2>Add New Product</h2>
+    <div id="status"></div>
+
+    <label>Category</label>
+    <input type="text" id="category" placeholder="e.g. Electronics" required>
+
+    <label>Name</label>
+    <input type="text" id="name" placeholder="e.g. Laptop" required>
+
+    <label>Price ($)</label>
+    <input type="number" id="price" placeholder="e.g. 999.99" step="0.01" min="0" required>
+
+    <label>Stock</label>
+    <input type="number" id="stock" placeholder="e.g. 50" min="0" required>
+
+    <button type="submit">Add Product</button>
+  </form>
+
+  <!-- Products Table -->
+  <h2>Current Products</h2>
+  <button class="refresh-btn" onclick="loadProducts()">🔄 Refresh</button>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Category</th>
+        <th>Name</th>
+        <th>Price</th>
+        <th>Stock</th>
+      </tr>
+    </thead>
+    <tbody id="productsTable">
+      <tr><td colspan="5">Loading...</td></tr>
+    </tbody>
+  </table>
+
+  <script>
+    const API_URL = 'https://lylhqon9gc.execute-api.us-east-1.amazonaws.com/products';
+
+    async function loadProducts() {
+      const tbody = document.getElementById('productsTable');
+      tbody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
+      try {
+        const res = await fetch(API_URL);
+        const data = await res.json();
+        if (data.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5">No products found.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = data.map(p => `
+          <tr>
+            <td style="font-size:11px;color:#888">${p.ID}</td>
+            <td>${p.Category}</td>
+            <td>${p.Name}</td>
+            <td>$${parseFloat(p.Price).toFixed(2)}</td>
+            <td>${p.Stock}</td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="5" style="color:red">Failed to load products. Check API URL or CORS settings.</td></tr>';
+        console.error(err);
+      }
+    }
+
+    document.getElementById('productForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const statusEl = document.getElementById('status');
+      const product = {
+        Category: document.getElementById('category').value,
+        Name:     document.getElementById('name').value,
+        Price:    document.getElementById('price').value,
+        Stock:    document.getElementById('stock').value
+      };
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(product)
+        });
+        if (res.ok) {
+          statusEl.className = 'success';
+          statusEl.textContent = '✅ Product added successfully!';
+          statusEl.style.display = 'block';
+          e.target.reset();
+          loadProducts();
+        } else {
+          throw new Error('Server returned ' + res.status);
+        }
+      } catch (err) {
+        statusEl.className = 'error';
+        statusEl.textContent = '❌ Error adding product. Check console for details.';
+        statusEl.style.display = 'block';
+        console.error(err);
+      }
+      setTimeout(() => statusEl.style.display = 'none', 4000);
+    });
+
+    // Load products on page open
+    loadProducts();
+  </script>
+
+</body>
+</html>
